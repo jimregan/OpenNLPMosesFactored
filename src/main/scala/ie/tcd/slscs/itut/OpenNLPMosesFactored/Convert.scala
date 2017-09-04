@@ -30,37 +30,18 @@ import opennlp.tools.lemmatizer.LemmatizerModel
 import opennlp.tools.lemmatizer.LemmatizerME
 import scala.io.Source
 import java.io._
+import java.nio.charset.Charset
 
-object Convert extends App {
-
-  val galembin: InputStream = getClass.getResourceAsStream("/ga-lemmatizer.bin")
-  val gaposbin: InputStream = getClass.getResourceAsStream("/ga-pos-maxent.bin")
+object Converter {
   val enlembin: InputStream = getClass.getResourceAsStream("/en-lemmatizer.dict")
   val enposbin: InputStream = getClass.getResourceAsStream("/en-pos-maxent.bin")
+  val galembin: InputStream = getClass.getResourceAsStream("/ga-lemmatizer.bin")
+  val gaposbin: InputStream = getClass.getResourceAsStream("/ga-pos-maxent.bin")
   
-  val galem = new LemmatizerME(new LemmatizerModel(galembin))
-  val gapos = new POSTaggerME(new POSModel(gaposbin))
   val enlem = new DictionaryLemmatizer(enlembin)
   val enpos = new POSTaggerME(new POSModel(enposbin))
-
-  if(args.length < 1) {
-    throw new Exception("No filename specified")
-  }
-  val filename = args(0)
-  val outputname = filename + "-out"
-  val writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputname), Charset.forName("UTF-8")))
-  
-  if(args.length < 2) {
-    throw new Exception("No language specified")
-  }
-  val lang = args(1)
-  val f_type: String = if(args.size == 3) args(2) else "moses"
-
-  for (line <- Source.fromFile(filename).getLines) {
-    writer.write(mkFactoredString(line, f_type, lang))
-  }
-  writer.close
-  System.exit(0)
+  val galem = new LemmatizerME(new LemmatizerModel(galembin))
+  val gapos = new POSTaggerME(new POSModel(gaposbin))
 
   def lc(a: Array[String], lang: String): Array[String] = {
     if(lang == "ga") {
@@ -87,10 +68,10 @@ object Convert extends App {
     val tags = pos.tag(in)
     val lemma = lem.lemmatize(in, tags)
     if(ftype == "moses") {
-      in.zip(lem).zip(pos).map{e => List(e._1._1, e._1._2, e._2).mkString("|")}.mkString(" ")
+      in.zip(lemma).zip(tags).map{e => List(e._1._1, e._1._2, e._2).mkString("|")}.mkString(" ") + "\n"
     } else {
       // OpenNMT
-      in.zip(onmtcase).zip(pos).map{e => List(e._1._1, e._1._2, e._2).mkString(onmt_splitter)}.mkString(" ")
+      in.zip(onmtcase).zip(tags).map{e => List(e._1._1, e._1._2, e._2).mkString(onmt_splitter)}.mkString(" ") + "\n"
     }
   }
 
@@ -113,6 +94,27 @@ object Convert extends App {
       s.toLowerCase
     }
   }
+}
+
+object Convert extends App {
+  if(args.length < 1) {
+    throw new Exception("No filename specified")
+  }
+  val filename = args(0)
+  val outputname = filename + "-out"
+  val writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputname), Charset.forName("UTF-8")))
   
+  if(args.length < 2) {
+    throw new Exception("No language specified")
+  }
+  val lang = args(1)
+  val f_type: String = if(args.size == 3) args(2) else "moses"
+
+  for (line <- Source.fromFile(filename).getLines) {
+    writer.write(Converter.mkFactoredString(line, f_type, lang))
+  }
+  writer.close
+  System.exit(0)
+ 
 }
 
