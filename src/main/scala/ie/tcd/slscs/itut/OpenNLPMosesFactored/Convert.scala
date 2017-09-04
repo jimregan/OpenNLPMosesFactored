@@ -23,20 +23,44 @@
  */
 package ie.tcd.slscs.itut.OpenNLPMosesFactored
 
-import opennlp.tools.tokenize.TokenizerME
-import opennlp.tools.tokenize.TokenizerModel
+import opennlp.tools.postag.POSModel
+import opennlp.tools.postag.POSTaggerME
+import opennlp.tools.lemmatizer.DictionaryLemmatizer
 import opennlp.tools.lemmatizer.LemmatizerModel
 import opennlp.tools.lemmatizer.LemmatizerME
-
+import scala.io.Source
 
 object Convert extends App {
 
-  if(args.length < 1) {
-    throw new Exception("Specify language")
-  }
-  val lang = args(0)
-  val type: String = if(args.size == 2) args(1) else "moses"
+  val galembin: InputStream = getClass.getResourceAsStream("/ga-lemmatizer.bin")
+  val gaposbin: InputStream = getClass.getResourceAsStream("/ga-pos-maxent.bin")
+  val enlembin: InputStream = getClass.getResourceAsStream("/en-lemmatizer.dict")
+  val enposbin: InputStream = getClass.getResourceAsStream("/en-pos-maxent.bin")
   
+  val galem = new LemmatizerME(new LemmatizerModel(galembin))
+  val gapos = new POSTaggerME(new POSModel(gatokbin))
+  val enlem = new DictionaryLemmatizer(enlembin)
+  val enpos = new POSTaggerME(new POSModel(entokbin))
+
+  if(args.length < 1) {
+    throw new Exception("No filename specified")
+  }
+  val filename = args(0)
+  val outputname = filename + "-out"
+  val writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputname), Charset.forName("UTF-8")))
+  
+  if(args.length < 2) {
+    throw new Exception("No language specified")
+  }
+  val lang = args(1)
+  val f_type: String = if(args.size == 3) args(2) else "moses"
+
+  for (line <- Source.fromFile(filename).getLines) {
+    writer.write(mkFactoredString(line, f_type, lang))
+  }
+  writer.close
+  System.exit(0)
+
   def lc(a: Array[String], lang: String): Array[String] = {
     if(lang == "ga") {
       a.map{e => gaToLower(e)}
@@ -46,15 +70,27 @@ object Convert extends App {
   }
   
   def mkFactoredString(s: String, ftype: String, lang: String): String = {
-    val in = s.split(" ")
+    val onmt_splitter = "￨"
+    val in = if(ftype == "moses") {
+        s.split(" ")
+      } else {
+        s.split(" ").map{e => e.split(onmt_splitter)(0)}
+      }
+    val onmtcase = if(ftype == "moses") {
+        null
+      } else {
+        s.split(" ").map{e => e.split(onmt_splitter)(1)}
+      }
+    val pos = if(lang == "ga") gapos else enpos
+    val lem = if(lang == "ga") galem else enlem
+    val tags = pos.tag(in)
+    val lemma = lem.lemmatize(in, tags)
     if(ftype == "moses") {
-    
+      in.zip(lem).zip(pos).map{e => List(e._1._1, e._1._2, e._2).mkString("|")}.mkString(" ")
     } else {
       // OpenNMT
-      val lowers = lc(in, lang)
-    
+      in.zip(onmtcase).zip(pos).map{e => List(e._1._1, e._1._2, e._2).mkString(onmt_splitter)}.mkString(" ")
     }
-    
   }
 
   def isIrishUpperVowel(c: Char): Boolean = c match {
