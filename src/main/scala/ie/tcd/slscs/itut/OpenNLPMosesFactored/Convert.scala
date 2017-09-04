@@ -29,6 +29,7 @@ import opennlp.tools.lemmatizer.DictionaryLemmatizer
 import opennlp.tools.lemmatizer.LemmatizerModel
 import opennlp.tools.lemmatizer.LemmatizerME
 import scala.io.Source
+import java.io._
 
 object Convert extends App {
 
@@ -38,9 +39,9 @@ object Convert extends App {
   val enposbin: InputStream = getClass.getResourceAsStream("/en-pos-maxent.bin")
   
   val galem = new LemmatizerME(new LemmatizerModel(galembin))
-  val gapos = new POSTaggerME(new POSModel(gatokbin))
+  val gapos = new POSTaggerME(new POSModel(gaposbin))
   val enlem = new DictionaryLemmatizer(enlembin)
-  val enpos = new POSTaggerME(new POSModel(entokbin))
+  val enpos = new POSTaggerME(new POSModel(enposbin))
 
   if(args.length < 1) {
     throw new Exception("No filename specified")
