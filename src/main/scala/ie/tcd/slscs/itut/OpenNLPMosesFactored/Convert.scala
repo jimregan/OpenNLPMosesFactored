@@ -81,7 +81,7 @@ object Converter {
   }
   def gaToLower(s: String): String = {
     if(s == "") {
-      ""
+      s
     }
     if(s.length == 1) {
       s.toLowerCase
@@ -108,12 +108,12 @@ object Convert extends App {
     throw new Exception("No language specified")
   }
   val lang = args(1)
-  val f_type: String = if(args.size == 3) args(2) else "moses"
+  val f_type: String = if(args.length == 3) args(2) else "moses"
 
   for (line <- Source.fromFile(filename).getLines) {
     writer.write(Converter.mkFactoredString(line, f_type, lang))
   }
-  writer.close
+  writer.close()
   System.exit(0)
  
 }
